@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Secrets and runtime data
+.env
+*.db
+backend/uploads/
+
+# Node / Angular
+node_modules/
+dist/
+.angular/
+*.log
+
+# IDE
+.vscode/
+.idea/
+.DS_Store

@@ -1,0 +1,21 @@
+# Render.com infrastructure-as-code config.
+# Render reads this file automatically on first deploy.
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: sdp-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: "apt-get update && apt-get install -y tesseract-ocr && pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false  # set manually in Render dashboard, never commit
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
+      - key: DATABASE_URL
+        value: sqlite:///./sdp.db
+      - key: CORS_ORIGINS
+        sync: false  # set to your Vercel URL once you have it
