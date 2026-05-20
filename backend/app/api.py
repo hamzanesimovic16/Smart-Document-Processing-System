@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -197,6 +198,19 @@ def update_status(
     db.refresh(doc)
     return _to_detail(doc)
 
+@router.get("/documents/{doc_id}/file")
+def get_document_file(doc_id: int, db: Session = Depends(get_db)):
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    file_path = settings.upload_dir / doc.stored_filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found on disk")
+    return FileResponse(
+        path=file_path,
+        filename=doc.original_filename,
+        media_type="application/octet-stream"
+    )
 
 @router.delete("/documents/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_document(doc_id: int, db: Session = Depends(get_db)):
