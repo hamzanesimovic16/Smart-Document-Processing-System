@@ -101,4 +101,8 @@ export class DocumentsService {
     const msg = err.error?.detail || err.message || 'Unknown error';
     return throwError(() => new Error(msg));
   }
+
+  getFileUrl(id: number): string {
+    return `${this.base}/api/documents/${id}/file`;
+  }
 }

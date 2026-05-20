@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -13,6 +14,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTabsModule } from '@angular/material/tabs';
 
 import {
   DocumentDetail,
@@ -27,19 +29,10 @@ import {
   selector: 'app-review',
   standalone: true,
   imports: [
-    CommonModule,
-    FormsModule,
-    MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatButtonModule,
-    MatIconModule,
-    MatDividerModule,
-    MatChipsModule,
-    MatExpansionModule,
-    MatProgressSpinnerModule,
-    MatSnackBarModule,
+    CommonModule, FormsModule,
+    MatCardModule, MatFormFieldModule, MatInputModule, MatSelectModule,
+    MatButtonModule, MatIconModule, MatDividerModule, MatChipsModule,
+    MatExpansionModule, MatProgressSpinnerModule, MatSnackBarModule, MatTabsModule,
   ],
   template: `
     @if (loading()) {
@@ -80,79 +73,103 @@ import {
       } @else {
         <mat-card class="issues-card success">
           <mat-card-content>
-            <mat-icon class="ok-icon">check_circle</mat-icon>
-            No validation issues.
+            <mat-icon class="ok-icon">check_circle</mat-icon> No validation issues.
           </mat-card-content>
         </mat-card>
       }
 
-      <div class="grid">
-        <mat-card>
-          <mat-card-header><mat-card-title>Document fields</mat-card-title></mat-card-header>
-          <mat-card-content>
-            <mat-form-field>
-              <mat-label>Document type</mat-label>
-              <mat-select [(ngModel)]="form().document_type">
-                <mat-option value="invoice">Invoice</mat-option>
-                <mat-option value="purchase_order">Purchase Order</mat-option>
-                <mat-option value="unknown">Unknown</mat-option>
-              </mat-select>
-              @if (issueFor('document_type')) { <mat-hint class="hint-err">⚠ {{ issueFor('document_type') }}</mat-hint> }
-            </mat-form-field>
+      <div class="main-layout">
 
-            <mat-form-field>
-              <mat-label>Supplier name</mat-label>
-              <input matInput [(ngModel)]="form().supplier_name" />
-              @if (issueFor('supplier_name')) { <mat-hint class="hint-err">⚠ {{ issueFor('supplier_name') }}</mat-hint> }
-            </mat-form-field>
-
-            <mat-form-field>
-              <mat-label>Document number</mat-label>
-              <input matInput [(ngModel)]="form().document_number" />
-              @if (issueFor('document_number')) { <mat-hint class="hint-err">⚠ {{ issueFor('document_number') }}</mat-hint> }
-            </mat-form-field>
-
-            <mat-form-field>
-              <mat-label>Issue date (YYYY-MM-DD)</mat-label>
-              <input matInput [(ngModel)]="form().issue_date" placeholder="2026-01-31" />
-              @if (issueFor('issue_date')) { <mat-hint class="hint-err">⚠ {{ issueFor('issue_date') }}</mat-hint> }
-            </mat-form-field>
-
-            <mat-form-field>
-              <mat-label>Due date (YYYY-MM-DD)</mat-label>
-              <input matInput [(ngModel)]="form().due_date" placeholder="2026-02-28" />
-              @if (issueFor('due_date')) { <mat-hint class="hint-err">⚠ {{ issueFor('due_date') }}</mat-hint> }
-            </mat-form-field>
-
-            <mat-form-field>
-              <mat-label>Currency (3-letter code)</mat-label>
-              <input matInput [(ngModel)]="form().currency" placeholder="EUR" maxlength="3" />
-              @if (issueFor('currency')) { <mat-hint class="hint-err">⚠ {{ issueFor('currency') }}</mat-hint> }
-            </mat-form-field>
+        <!-- LEFT: preview -->
+        <mat-card class="preview-card">
+          <mat-card-header><mat-card-title>Document preview</mat-card-title></mat-card-header>
+          <mat-card-content class="preview-content">
+            @if (isPdf()) {
+              <iframe [src]="safeFileUrl()" class="preview-frame" title="Document preview"></iframe>
+            } @else if (isImage()) {
+              <img [src]="safeFileUrl()" class="preview-img" alt="Document preview" />
+            } @else {
+              <div class="preview-fallback">
+                <mat-icon class="big-icon">insert_drive_file</mat-icon>
+                <p>Preview not available for {{ doc()!.file_type }} files.</p>
+                <a mat-stroked-button [href]="fileUrl()" target="_blank" download>
+                  <mat-icon>download</mat-icon> Download file
+                </a>
+              </div>
+            }
           </mat-card-content>
         </mat-card>
 
-        <mat-card>
-          <mat-card-header><mat-card-title>Totals</mat-card-title></mat-card-header>
-          <mat-card-content>
-            <mat-form-field>
-              <mat-label>Subtotal</mat-label>
-              <input matInput type="number" [(ngModel)]="form().subtotal" />
-              @if (issueFor('subtotal')) { <mat-hint class="hint-err">⚠ {{ issueFor('subtotal') }}</mat-hint> }
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>Tax</mat-label>
-              <input matInput type="number" [(ngModel)]="form().tax" />
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>Total</mat-label>
-              <input matInput type="number" [(ngModel)]="form().total" />
-              @if (issueFor('total')) { <mat-hint class="hint-err">⚠ {{ issueFor('total') }}</mat-hint> }
-            </mat-form-field>
-          </mat-card-content>
-        </mat-card>
+        <!-- RIGHT: fields -->
+        <div class="fields-col">
+          <mat-card>
+            <mat-card-header><mat-card-title>Document fields</mat-card-title></mat-card-header>
+            <mat-card-content>
+              <mat-form-field>
+                <mat-label>Document type</mat-label>
+                <mat-select [(ngModel)]="form().document_type">
+                  <mat-option value="invoice">Invoice</mat-option>
+                  <mat-option value="purchase_order">Purchase Order</mat-option>
+                  <mat-option value="unknown">Unknown</mat-option>
+                </mat-select>
+                @if (issueFor('document_type')) { <mat-hint class="hint-err">⚠ {{ issueFor('document_type') }}</mat-hint> }
+              </mat-form-field>
+
+              <mat-form-field>
+                <mat-label>Supplier name</mat-label>
+                <input matInput [(ngModel)]="form().supplier_name" />
+                @if (issueFor('supplier_name')) { <mat-hint class="hint-err">⚠ {{ issueFor('supplier_name') }}</mat-hint> }
+              </mat-form-field>
+
+              <mat-form-field>
+                <mat-label>Document number</mat-label>
+                <input matInput [(ngModel)]="form().document_number" />
+                @if (issueFor('document_number')) { <mat-hint class="hint-err">⚠ {{ issueFor('document_number') }}</mat-hint> }
+              </mat-form-field>
+
+              <mat-form-field>
+                <mat-label>Issue date (YYYY-MM-DD)</mat-label>
+                <input matInput [(ngModel)]="form().issue_date" placeholder="2026-01-31" />
+                @if (issueFor('issue_date')) { <mat-hint class="hint-err">⚠ {{ issueFor('issue_date') }}</mat-hint> }
+              </mat-form-field>
+
+              <mat-form-field>
+                <mat-label>Due date (YYYY-MM-DD)</mat-label>
+                <input matInput [(ngModel)]="form().due_date" placeholder="2026-02-28" />
+                @if (issueFor('due_date')) { <mat-hint class="hint-err">⚠ {{ issueFor('due_date') }}</mat-hint> }
+              </mat-form-field>
+
+              <mat-form-field>
+                <mat-label>Currency</mat-label>
+                <input matInput [(ngModel)]="form().currency" placeholder="EUR" maxlength="3" />
+                @if (issueFor('currency')) { <mat-hint class="hint-err">⚠ {{ issueFor('currency') }}</mat-hint> }
+              </mat-form-field>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card style="margin-top:16px">
+            <mat-card-header><mat-card-title>Totals</mat-card-title></mat-card-header>
+            <mat-card-content>
+              <mat-form-field>
+                <mat-label>Subtotal</mat-label>
+                <input matInput type="number" [(ngModel)]="form().subtotal" />
+                @if (issueFor('subtotal')) { <mat-hint class="hint-err">⚠ {{ issueFor('subtotal') }}</mat-hint> }
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Tax</mat-label>
+                <input matInput type="number" [(ngModel)]="form().tax" />
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Total</mat-label>
+                <input matInput type="number" [(ngModel)]="form().total" />
+                @if (issueFor('total')) { <mat-hint class="hint-err">⚠ {{ issueFor('total') }}</mat-hint> }
+              </mat-form-field>
+            </mat-card-content>
+          </mat-card>
+        </div>
       </div>
 
+      <!-- Line items full width -->
       <mat-card class="line-items-card">
         <mat-card-header>
           <mat-card-title>Line items ({{ form().line_items.length }})</mat-card-title>
@@ -205,7 +222,7 @@ import {
   `,
   styles: [`
     .center { display: flex; justify-content: center; padding: 64px; }
-    .header-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .header-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
     .header-row h2 { margin: 0; }
     .spacer { flex: 1; }
     .issues-card { margin-bottom: 16px; }
@@ -215,18 +232,32 @@ import {
     .issues-list li { padding: 8px 0; display: flex; align-items: center; gap: 8px; }
     .issues-list .severity-error { color: #c62828; }
     .issues-list .severity-warning { color: #ef6c00; }
-    .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
-    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+    /* Two-column layout: preview left, fields right */
+    .main-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    @media (max-width: 1100px) { .main-layout { grid-template-columns: 1fr; } }
+
+    .preview-card mat-card-content { padding: 0; }
+    .preview-content { height: 600px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .preview-frame { width: 100%; height: 100%; border: none; border-radius: 0 0 4px 4px; }
+    .preview-img { max-width: 100%; max-height: 100%; object-fit: contain; padding: 8px; }
+    .preview-fallback { text-align: center; color: #888; padding: 32px; }
+    .preview-fallback .big-icon { font-size: 64px; width: 64px; height: 64px; color: #ccc; }
+
+    .fields-col { display: flex; flex-direction: column; }
     mat-form-field { width: 100%; margin-bottom: 8px; }
     .hint-err { color: #c62828 !important; }
+
     .line-items-card { margin-bottom: 16px; }
     .line-items-card mat-card-header { display: flex; align-items: center; }
     .line-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
     .line-row.line-error { background: #ffebee; padding: 4px; border-radius: 4px; }
     .line-issue { color: #c62828; font-size: 0.85em; margin-bottom: 8px; padding-left: 8px; }
     .empty { text-align: center; color: #888; padding: 16px; }
+
     .raw-panel { margin-bottom: 32px; }
     .raw-text { white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: 0.85em; background: #f9fafb; padding: 12px; border-radius: 4px; }
+
     .chip-validated { background: #c8e6c9 !important; color: #1b5e20 !important; }
     .chip-needs-review { background: #ffe0b2 !important; color: #bf360c !important; }
     .chip-rejected { background: #ffcdd2 !important; color: #b71c1c !important; }
@@ -238,6 +269,7 @@ export class ReviewComponent {
   private router = inject(Router);
   private docsService = inject(DocumentsService);
   private snack = inject(MatSnackBar);
+  private sanitizer = inject(DomSanitizer);
 
   loading = signal(true);
   saving = signal(false);
@@ -276,12 +308,23 @@ export class ReviewComponent {
     });
   }
 
+  fileUrl(): string {
+    const id = this.doc()?.id;
+    return id ? this.docsService.getFileUrl(id) : '';
+  }
+
+  safeFileUrl(): SafeResourceUrl {
+    return this.sanitizer.bypassSecurityTrustResourceUrl(this.fileUrl());
+  }
+
+  isPdf(): boolean { return this.doc()?.file_type === 'pdf'; }
+  isImage(): boolean { return this.doc()?.file_type === 'image'; }
+
   back() { this.router.navigate(['/dashboard']); }
 
   save() {
     const id = this.doc()?.id;
     if (!id) return;
-    // Coerce empty strings to null so the backend doesn't see them as "present but empty".
     const payload = this.cleanForm(this.form());
     this.saving.set(true);
     this.docsService.update(id, payload).subscribe({
