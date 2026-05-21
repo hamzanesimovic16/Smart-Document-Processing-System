@@ -2,15 +2,15 @@
 
 End-to-end system that ingests invoices and purchase orders from multiple file formats, extracts structured fields with an LLM, runs deterministic validation, and exposes a review UI for manual correction.
 
-**Live demo:** _your-vercel-url-here_
-**Backend API docs:** _your-render-url_/docs
+**Live demo:** https://smart-document-processing-system-pi.vercel.app/dashboard
+**Backend API docs:** https://sdp-backend-z17b.onrender.com/docs
 
 ---
 
 ## Tech stack
 
 **Backend** — Python 3.12 + FastAPI + SQLite + SQLAlchemy
-**LLM** — Google Gemini 2.0 Flash via the `google-genai` SDK (free tier)
+**LLM** — Google Gemini 2.5 Flash via the `google-genai` SDK (free tier)
 **OCR** — Tesseract (via `pytesseract`) for image inputs
 **PDF** — `pdfplumber` for text-based PDFs
 **Frontend** — Angular 17+ standalone components + Angular Material
